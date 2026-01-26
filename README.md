@@ -16,7 +16,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/pristabell/tradera-api-client"
+	"github.com/SebbeJohansson/tradera-go-client"
 )
 
 func main() {
