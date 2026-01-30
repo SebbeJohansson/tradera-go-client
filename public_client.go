@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/pristabell/tradera-api-client/generated/public"
+	"github.com/SebbeJohansson/tradera-go-client/generated/public"
 )
 
 // PublicClient provides access to the Tradera Public API.

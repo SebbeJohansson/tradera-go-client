@@ -16,17 +16,17 @@ const (
 // AuthenticationHeader is the SOAP header for app authentication.
 // This header is required for all API calls.
 type AuthenticationHeader struct {
-	XMLName xml.Name `xml:"tra:AuthenticationHeader"`
-	AppID   int      `xml:"tra:AppId"`
-	AppKey  string   `xml:"tra:AppKey"`
+	XMLName xml.Name `xml:"http://api.tradera.com AuthenticationHeader"`
+	AppID   int      `xml:"AppId"`
+	AppKey  string   `xml:"AppKey"`
 }
 
 // AuthorizationHeader is the SOAP header for user authentication.
 // This header is required for Restricted, Order, and Buyer services.
 type AuthorizationHeader struct {
-	XMLName xml.Name `xml:"tra:AuthorizationHeader"`
-	UserID  int      `xml:"tra:UserId"`
-	Token   string   `xml:"tra:Token"`
+	XMLName xml.Name `xml:"http://api.tradera.com AuthorizationHeader"`
+	UserID  int      `xml:"UserId"`
+	Token   string   `xml:"Token"`
 }
 
 // SOAPHeaders contains all headers to be included in a SOAP request.

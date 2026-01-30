@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hooklift/gowsdl/soap"
-	"github.com/pristabell/tradera-api-client/generated/search"
+	"github.com/SebbeJohansson/tradera-go-client/generated/search"
 )
 
 // SearchClient provides access to the Tradera Search API.

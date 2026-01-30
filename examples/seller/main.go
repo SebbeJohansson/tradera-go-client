@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"time"
 
-	tradera "github.com/pristabell/tradera-api-client"
+	tradera "github.com/SebbeJohansson/tradera-go-client"
 )
 
 func main() {

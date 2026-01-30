@@ -3,7 +3,7 @@ package tradera
 import (
 	"context"
 
-	"github.com/pristabell/tradera-api-client/generated/order"
+	"github.com/SebbeJohansson/tradera-go-client/generated/order"
 )
 
 // OrderClient provides access to the Tradera Order API.

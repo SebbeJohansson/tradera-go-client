@@ -3,7 +3,7 @@ package tradera
 import (
 	"context"
 
-	"github.com/pristabell/tradera-api-client/generated/listing"
+	"github.com/SebbeJohansson/tradera-go-client/generated/listing"
 )
 
 // ListingClient provides access to the Tradera Listing API.

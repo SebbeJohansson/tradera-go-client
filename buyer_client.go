@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/hooklift/gowsdl/soap"
-	"github.com/pristabell/tradera-api-client/generated/buyer"
+	"github.com/SebbeJohansson/tradera-go-client/generated/buyer"
 )
 
 // BuyerClient provides access to the Tradera Buyer API.

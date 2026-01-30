@@ -3,7 +3,7 @@ package tradera
 import (
 	"context"
 
-	"github.com/pristabell/tradera-api-client/generated/restricted"
+	"github.com/SebbeJohansson/tradera-go-client/generated/restricted"
 )
 
 // RestrictedClient provides access to the Tradera Restricted API.

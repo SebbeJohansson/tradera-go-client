@@ -36,7 +36,7 @@ import (
 	"time"
 
 	"github.com/hooklift/gowsdl/soap"
-	"github.com/pristabell/tradera-api-client/middleware"
+	"github.com/SebbeJohansson/tradera-go-client/middleware"
 )
 
 // WSDL URLs for Tradera services

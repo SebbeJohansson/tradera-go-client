@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	tradera "github.com/pristabell/tradera-api-client"
+	tradera "github.com/SebbeJohansson/tradera-go-client"
 )
 
 // This example shows how to create a basic client and search for items.
