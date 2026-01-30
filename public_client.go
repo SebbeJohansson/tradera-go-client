@@ -55,6 +55,14 @@ type Item struct {
 	Buyers            []*User
 	ImageLinks        []string
 	ShippingOptions   []*ItemShipping
+	Status            *ItemStatus
+}
+
+// ItemStatus represents the status of a Tradera item.
+type ItemStatus struct {
+	Ended      bool
+	GotBidders bool
+	GotWinner  bool
 }
 
 // User represents a Tradera user.
@@ -282,6 +290,14 @@ func convertPublicItem(item *public.Item) *Item {
 		}
 	}
 
+	if item.Status != nil {
+		i.Status = &ItemStatus{
+			Ended:      item.Status.Ended,
+			GotBidders: item.Status.GotBidders,
+			GotWinner:  item.Status.GotWinner,
+		}
+	}
+
 	return i
 }
 
@@ -362,6 +378,50 @@ func convertIdDescriptionPairs(pairs *public.ArrayOfIdDescriptionPair) []*IdDesc
 			Description: pair.Description,
 			Value:       pair.Value,
 		}
+	}
+	return result
+}
+
+// PublicSearchResult represents the result of a search query from the Public service.
+type PublicSearchResult struct {
+	TotalNumberOfItems int32
+	TotalNumberOfPages int32
+	Items              []*Item
+}
+
+// GetSearchResultAdvanced performs an advanced search using the Public service.
+// Returns full Item objects with Status, Seller, and other detailed fields.
+// This is useful for searching ended/sold items for price tracking.
+func (c *PublicClient) GetSearchResultAdvanced(ctx context.Context, query *public.Query) (*PublicSearchResult, error) {
+	result, err := executeWithMiddlewareResult(c.client, ctx, func() (*public.GetSearchResultAdvancedResponse, error) {
+		return c.service.GetSearchResultAdvancedContext(ctx, &public.GetSearchResultAdvanced{
+			Query: query,
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if result.GetSearchResultAdvancedResult == nil {
+		return &PublicSearchResult{}, nil
+	}
+
+	return &PublicSearchResult{
+		TotalNumberOfItems: result.GetSearchResultAdvancedResult.TotalNumberOfItems,
+		TotalNumberOfPages: result.GetSearchResultAdvancedResult.TotalNumberOfPages,
+		Items:              convertPublicItemsSlice(result.GetSearchResultAdvancedResult.Items),
+	}, nil
+}
+
+// convertPublicItemsSlice converts a slice of public.Item to a slice of Item.
+func convertPublicItemsSlice(items []*public.Item) []*Item {
+	if items == nil {
+		return nil
+	}
+
+	result := make([]*Item, len(items))
+	for i, item := range items {
+		result[i] = convertPublicItem(item)
 	}
 	return result
 }
