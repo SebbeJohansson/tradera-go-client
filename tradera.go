@@ -1,251 +1,211 @@
-// Package tradera provides a Go client for the Tradera SOAP API.
-//
-// This client wraps all 6 Tradera API services:
-//   - SearchClient: Item search operations
-//   - PublicClient: Public data (items, categories, users)
-//   - ListingClient: Listing information
-//   - RestrictedClient: Seller operations (requires user auth)
-//   - OrderClient: Order management (requires user auth)
-//   - BuyerClient: Buyer operations (requires user auth)
-//
-// Features:
-//   - Full context.Context support for timeouts and cancellation
-//   - Optional rate limiting
-//   - Optional automatic retry with exponential backoff
-//   - Optional response caching
-//
-// Basic usage:
-//
-//	client, err := tradera.NewClient(tradera.DefaultConfig(1234, "your-app-key"))
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	result, err := client.Search().Search(ctx, "vintage camera", 0)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	fmt.Printf("Found %d items\n", result.TotalNumberOfItems)
+// Package tradera provides a generated Go client for Tradera's REST API v4.
 package tradera
 
 import (
-	"context"
+	"fmt"
+	"io"
 	"net/http"
-	"sync"
+	"strconv"
 	"time"
 
-	"github.com/hooklift/gowsdl/soap"
+	"github.com/SebbeJohansson/tradera-go-client/generated/rest"
+	"github.com/SebbeJohansson/tradera-go-client/generated/rest/buyer"
+	"github.com/SebbeJohansson/tradera-go-client/generated/rest/listing"
+	"github.com/SebbeJohansson/tradera-go-client/generated/rest/order"
+	"github.com/SebbeJohansson/tradera-go-client/generated/rest/public"
+	"github.com/SebbeJohansson/tradera-go-client/generated/rest/restricted"
+	"github.com/SebbeJohansson/tradera-go-client/generated/rest/search"
 	"github.com/SebbeJohansson/tradera-go-client/middleware"
 )
 
-// WSDL URLs for Tradera services
-const (
-	SearchServiceURL     = "https://api.tradera.com/v3/SearchService.asmx"
-	PublicServiceURL     = "https://api.tradera.com/v3/PublicService.asmx"
-	ListingServiceURL    = "https://api.tradera.com/v3/ListingService.asmx"
-	RestrictedServiceURL = "https://api.tradera.com/v3/RestrictedService.asmx"
-	OrderServiceURL      = "https://api.tradera.com/v3/OrderService.asmx"
-	BuyerServiceURL      = "https://api.tradera.com/v3/BuyerService.asmx"
-)
-
-// Client is the main Tradera API client.
-// It provides access to all Tradera services with optional middleware support.
+// Client provides aggregate and service-scoped generated REST clients.
 type Client struct {
 	config Config
 
-	// Middleware
-	rateLimiter *middleware.RateLimiter
-	retryer     *middleware.Retryer
-	cache       *middleware.Cache
-
-	// HTTP client
-	httpClient *http.Client
-
-	// Lazy-initialized service clients
-	searchClient     *SearchClient
-	publicClient     *PublicClient
-	listingClient    *ListingClient
-	restrictedClient *RestrictedClient
-	orderClient      *OrderClient
-	buyerClient      *BuyerClient
-
-	mu sync.Mutex
+	raw        *rest.ClientWithResponses
+	search     *search.ClientWithResponses
+	public     *public.ClientWithResponses
+	listing    *listing.ClientWithResponses
+	restricted *restricted.ClientWithResponses
+	order      *order.ClientWithResponses
+	buyer      *buyer.ClientWithResponses
 }
 
-// NewClient creates a new Tradera API client with the given configuration.
+// NewClient creates a Tradera REST API v4 client.
 func NewClient(config Config) (*Client, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
-
-	c := &Client{
-		config: config,
-		httpClient: &http.Client{
-			Timeout: config.Timeout,
-		},
+	if config.BaseURL == "" {
+		config.BaseURL = DefaultBaseURL
 	}
 
-	// Initialize rate limiter if configured
+	httpClient := configuredHTTPClient(config)
+
+	rawClient, err := rest.NewClientWithResponses(config.BaseURL, rest.WithHTTPClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("create aggregate client: %w", err)
+	}
+	searchClient, err := search.NewClientWithResponses(config.BaseURL, search.WithHTTPClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("create search client: %w", err)
+	}
+	publicClient, err := public.NewClientWithResponses(config.BaseURL, public.WithHTTPClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("create public client: %w", err)
+	}
+	listingClient, err := listing.NewClientWithResponses(config.BaseURL, listing.WithHTTPClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("create listing client: %w", err)
+	}
+	restrictedClient, err := restricted.NewClientWithResponses(config.BaseURL, restricted.WithHTTPClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("create restricted client: %w", err)
+	}
+	orderClient, err := order.NewClientWithResponses(config.BaseURL, order.WithHTTPClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("create order client: %w", err)
+	}
+	buyerClient, err := buyer.NewClientWithResponses(config.BaseURL, buyer.WithHTTPClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("create buyer client: %w", err)
+	}
+
+	return &Client{
+		config:     config,
+		raw:        rawClient,
+		search:     searchClient,
+		public:     publicClient,
+		listing:    listingClient,
+		restricted: restrictedClient,
+		order:      orderClient,
+		buyer:      buyerClient,
+	}, nil
+}
+
+// Raw returns the aggregate generated client containing every REST v4 operation.
+func (client *Client) Raw() *rest.ClientWithResponses { return client.raw }
+
+// Search returns the generated Search service client.
+func (client *Client) Search() *search.ClientWithResponses { return client.search }
+
+// Public returns the generated Public service client.
+func (client *Client) Public() *public.ClientWithResponses { return client.public }
+
+// Listing returns the generated Listing service client.
+func (client *Client) Listing() *listing.ClientWithResponses { return client.listing }
+
+// Restricted returns the generated Restricted service client.
+func (client *Client) Restricted() *restricted.ClientWithResponses { return client.restricted }
+
+// Order returns the generated Order service client.
+func (client *Client) Order() *order.ClientWithResponses { return client.order }
+
+// Buyer returns the generated Buyer service client.
+func (client *Client) Buyer() *buyer.ClientWithResponses { return client.buyer }
+
+// Config returns the effective client configuration.
+func (client *Client) Config() Config { return client.config }
+
+func configuredHTTPClient(config Config) *http.Client {
+	httpClient := &http.Client{}
+	if config.HTTPClient != nil {
+		*httpClient = *config.HTTPClient
+	}
+	if config.Timeout > 0 {
+		httpClient.Timeout = config.Timeout
+	}
+
+	baseTransport := httpClient.Transport
+	if baseTransport == nil {
+		baseTransport = http.DefaultTransport
+	}
+
+	transport := &apiTransport{
+		base:    baseTransport,
+		config:  config,
+		headers: config.Headers.Clone(),
+	}
 	if config.RateLimit > 0 {
-		c.rateLimiter = middleware.NewRateLimiter(config.RateLimit)
+		transport.rateLimiter = middleware.NewRateLimiter(config.RateLimit)
 	}
-
-	// Initialize retryer if configured
 	if config.RetryEnabled {
-		retryConfig := middleware.RetryConfig{
+		transport.retryer = middleware.NewRetryer(middleware.RetryConfig{
 			MaxRetries:  config.MaxRetries,
 			BaseDelay:   config.RetryBaseDelay,
 			MaxDelay:    30 * time.Second,
-			Multiplier:  2.0,
+			Multiplier:  2,
 			Jitter:      0.2,
 			ShouldRetry: IsRetryable,
-		}
-		c.retryer = middleware.NewRetryer(retryConfig)
-	}
-
-	// Initialize cache if configured
-	if config.CacheTTL > 0 {
-		c.cache = middleware.NewCache(config.CacheTTL)
-	}
-
-	return c, nil
-}
-
-// Search returns the SearchClient for item search operations.
-func (c *Client) Search() *SearchClient {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.searchClient == nil {
-		c.searchClient = newSearchClient(c)
-	}
-	return c.searchClient
-}
-
-// Public returns the PublicClient for public data operations.
-func (c *Client) Public() *PublicClient {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.publicClient == nil {
-		c.publicClient = newPublicClient(c)
-	}
-	return c.publicClient
-}
-
-// Listing returns the ListingClient for listing operations.
-func (c *Client) Listing() *ListingClient {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.listingClient == nil {
-		c.listingClient = newListingClient(c)
-	}
-	return c.listingClient
-}
-
-// Restricted returns the RestrictedClient for seller operations.
-// Requires user authentication (UserID and Token in config).
-func (c *Client) Restricted() *RestrictedClient {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.restrictedClient == nil {
-		c.restrictedClient = newRestrictedClient(c)
-	}
-	return c.restrictedClient
-}
-
-// Order returns the OrderClient for order management operations.
-// Requires user authentication (UserID and Token in config).
-func (c *Client) Order() *OrderClient {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.orderClient == nil {
-		c.orderClient = newOrderClient(c)
-	}
-	return c.orderClient
-}
-
-// Buyer returns the BuyerClient for buyer operations.
-// Requires user authentication (UserID and Token in config).
-func (c *Client) Buyer() *BuyerClient {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.buyerClient == nil {
-		c.buyerClient = newBuyerClient(c)
-	}
-	return c.buyerClient
-}
-
-// Config returns the current configuration.
-func (c *Client) Config() Config {
-	return c.config
-}
-
-// Close releases any resources held by the client.
-func (c *Client) Close() {
-	if c.cache != nil {
-		c.cache.Close()
-	}
-}
-
-// createSOAPClient creates a new SOAP client for the given service URL.
-func (c *Client) createSOAPClient(serviceURL string) *soap.Client {
-	client := soap.NewClient(serviceURL, soap.WithHTTPClient(c.httpClient))
-
-	// Add authentication headers
-	client.AddHeader(AuthenticationHeader{
-		AppID:  c.config.AppID,
-		AppKey: c.config.AppKey,
-	})
-
-	// Add user authorization header if configured
-	if c.config.HasUserAuth() {
-		client.AddHeader(AuthorizationHeader{
-			UserID: c.config.UserID,
-			Token:  c.config.Token,
 		})
 	}
-
-	return client
+	httpClient.Transport = transport
+	return httpClient
 }
 
-// executeWithMiddleware executes a function with rate limiting and retry support.
-func (c *Client) executeWithMiddleware(ctx context.Context, fn func() error) error {
-	// Apply rate limiting
-	if c.rateLimiter != nil {
-		if err := c.rateLimiter.Wait(ctx); err != nil {
-			return err
+type apiTransport struct {
+	base        http.RoundTripper
+	config      Config
+	headers     http.Header
+	rateLimiter *middleware.RateLimiter
+	retryer     *middleware.Retryer
+}
+
+func (transport *apiTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if transport.rateLimiter != nil {
+		if err := transport.rateLimiter.Wait(request.Context()); err != nil {
+			return nil, err
 		}
 	}
 
-	// Apply retry logic
-	if c.retryer != nil {
-		return c.retryer.Do(ctx, fn)
-	}
+	perform := func() (*http.Response, error) {
+		attempt := request.Clone(request.Context())
+		if request.GetBody != nil {
+			body, err := request.GetBody()
+			if err != nil {
+				return nil, err
+			}
+			attempt.Body = body
+		}
+		transport.applyHeaders(attempt)
 
-	return fn()
-}
+		response, err := transport.base.RoundTrip(attempt)
+		if err != nil {
+			return nil, err
+		}
+		if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
+			return response, nil
+		}
 
-// executeWithMiddlewareResult executes a function that returns a result with middleware support.
-func executeWithMiddlewareResult[T any](c *Client, ctx context.Context, fn func() (T, error)) (T, error) {
-	var result T
-
-	// Apply rate limiting
-	if c.rateLimiter != nil {
-		if err := c.rateLimiter.Wait(ctx); err != nil {
-			return result, err
+		body, readErr := io.ReadAll(response.Body)
+		_ = response.Body.Close()
+		if readErr != nil {
+			return nil, readErr
+		}
+		return nil, &APIError{
+			StatusCode: response.StatusCode,
+			Body:       body,
+			Header:     response.Header.Clone(),
+			RequestID:  response.Header.Get("X-Request-Id"),
 		}
 	}
 
-	// Apply retry logic
-	if c.retryer != nil {
-		return middleware.DoWithResult(ctx, c.retryer, fn)
+	if transport.retryer != nil {
+		return middleware.DoWithResult(request.Context(), transport.retryer, perform)
 	}
+	return perform()
+}
 
-	return fn()
+func (transport *apiTransport) applyHeaders(request *http.Request) {
+	for name, values := range transport.headers {
+		for _, value := range values {
+			request.Header.Add(name, value)
+		}
+	}
+	request.Header.Set("X-App-Id", strconv.Itoa(transport.config.AppID))
+	request.Header.Set("X-App-Key", transport.config.AppKey)
+	if transport.config.HasUserAuth() {
+		request.Header.Set("X-User-Id", strconv.Itoa(transport.config.UserID))
+		request.Header.Set("X-User-Token", transport.config.Token)
+	}
 }

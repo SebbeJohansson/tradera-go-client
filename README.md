@@ -1,31 +1,31 @@
-# tradera-api-client
+# Tradera API Client for Go
 
-A comprehensive Go client library for the Tradera SOAP API.
+A generated Go client for Tradera's REST API v4. The package provides aggregate and service-scoped clients with generated request types, response types, and endpoint methods.
 
-## Project Background
+## Features
 
-This project is fully AI-generated based on [pristabell/tradera-api-client](https://github.com/SebbeJohansson/tradera-api-client). It provides a high-level, idiomatic Go interface for interacting with Tradera's web services.
+- **Generated API surface** - endpoint methods and models come from Tradera's OpenAPI contract
+- **Service clients** - Search, Public, Listing, Restricted, Order, and Buyer clients
+- **Typed responses** - generated `...WithResponse` methods decode documented JSON responses
+- **Authentication** - application and optional user credentials are added to every request
+- **Configurable transport** - custom base URL, HTTP client, headers, timeout, retries, and rate limiting
+- **Structured errors** - non-successful responses return `*tradera.APIError`
+
+## Official Tradera API Documentation
+
+- [REST API Getting Started](https://api.tradera.com/v4/docs/index.html)
+- [REST API Reference](https://api.tradera.com/v4/swagger/index.html)
+- [Developer Center](https://api.tradera.com/)
+
+## Looking for SOAP API v3?
+
+Tradera's SOAP API remains at v3 and is intended for existing integrations. The previous Go SOAP client source is preserved on the [`archive/v3`](https://github.com/SebbeJohansson/tradera-go-client/tree/archive/v3) branch. New integrations should use this REST v4 client.
 
 ## Installation
 
 ```bash
 go get github.com/SebbeJohansson/tradera-go-client
 ```
-
-## Available Clients
-
-The library provides access to all 6 Tradera API services via dedicated clients:
-
-- **SearchClient**: Item search operations
-- **PublicClient**: Public data (items, categories, users)
-- **ListingClient**: Listing information and status updates
-- **RestrictedClient**: Seller operations (requires user authentication)
-- **OrderClient**: Order and transaction management (requires user authentication)
-- **BuyerClient**: Buyer operations and feedback (requires user authentication)
-
-## Generated Code
-
-The code in the [`generated/`](file:///c:/Users/sebbe/Projects/pristabell/go-tradera-api-client/generated) directory is automatically generated from the Tradera WSDL files using `gowsdl`. These files contain the underlying SOAP structures and service definitions.
 
 ## Basic Usage
 
@@ -36,27 +36,102 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"github.com/SebbeJohansson/tradera-go-client"
+
+	tradera "github.com/SebbeJohansson/tradera-go-client"
+	"github.com/SebbeJohansson/tradera-go-client/generated/rest/search"
 )
 
 func main() {
-    // Create a new client with your AppID and AppKey
-    cfg := tradera.DefaultConfig(1234, "your-app-key")
-    client, err := tradera.NewClient(cfg)
-    if err != nil {
-        log.Fatal(err)
-    }
+	client, err := tradera.NewClient(tradera.DefaultConfig(1234, "your-app-key"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    ctx := context.Background()
+	query := "vintage camera"
+	response, err := client.Search().SearchWithResponse(
+		context.Background(),
+		&search.SearchParams{Query: &query},
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    // Example: Search for items
-    result, err := client.Search().Search(ctx, "vintage camera", 0)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    fmt.Printf("Found %d items\n", result.TotalNumberOfItems)
+	fmt.Printf("Result: %#v\n", response.JSON200)
 }
+```
+
+### Public API
+
+```go
+response, err := client.Public().GetItemWithResponse(ctx, 123456789)
+if err != nil {
+	log.Fatal(err)
+}
+
+item := response.JSON200
+```
+
+### User Authentication
+
+Restricted, Order, and Buyer operations generally require user credentials:
+
+```go
+config := tradera.DefaultConfig(1234, "your-app-key").
+	WithUserAuth(5678, "your-user-token")
+
+client, err := tradera.NewClient(config)
+```
+
+The client sends these REST headers:
+
+- `X-App-Id`
+- `X-App-Key`
+- `X-User-Id`, when user authentication is configured
+- `X-User-Token`, when user authentication is configured
+
+## Available Clients
+
+| Method | Generated package | Purpose |
+| --- | --- | --- |
+| `client.Raw()` | `generated/rest` | All REST v4 operations |
+| `client.Search()` | `generated/rest/search` | Item search operations |
+| `client.Public()` | `generated/rest/public` | Public items, users, categories, and reference data |
+| `client.Listing()` | `generated/rest/listing` | Listing restart information |
+| `client.Restricted()` | `generated/rest/restricted` | Authenticated seller and listing operations |
+| `client.Order()` | `generated/rest/order` | Seller order operations |
+| `client.Buyer()` | `generated/rest/buyer` | Buyer operations |
+
+Methods ending in `WithResponse` return generated wrappers containing the raw HTTP response, response body, status helpers, and decoded fields such as `JSON200`.
+
+## Errors
+
+Non-2xx responses are returned as `*tradera.APIError` with the status code, response body, headers, and request ID when provided by Tradera.
+
+```go
+var apiError *tradera.APIError
+if errors.As(err, &apiError) {
+	fmt.Printf("status=%d request=%s body=%s\n", apiError.StatusCode, apiError.RequestID, apiError.Body)
+}
+```
+
+## Generated Code
+
+The OpenAPI contract is pinned under `openapi/`. Because the upstream document does not provide `operationId` values, `openapi/client-operations.json` maintains reviewed method names and service assignments.
+
+```bash
+go run ./internal/updatecontract
+go generate ./...
+git diff --exit-code -- generated/rest
+```
+
+Everything under `generated/rest/` is generated and must not be edited directly. Some search request/result schemas are open maps because those schemas are empty in Tradera's current OpenAPI document.
+
+## Development
+
+```bash
+go generate ./...
+go test ./...
+go vet ./...
 ```
 
 ## License
