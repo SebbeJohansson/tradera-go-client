@@ -9,103 +9,104 @@ import (
 	"time"
 
 	"github.com/SebbeJohansson/tradera-go-client/generated/rest"
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/buyer"
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/listing"
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/order"
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/public"
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/restricted"
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/search"
 	"github.com/SebbeJohansson/tradera-go-client/middleware"
 )
 
 // Client provides aggregate and service-scoped generated REST clients.
 type Client struct {
+	*rest.ClientWithResponses
+
 	config Config
 
-	raw        *rest.ClientWithResponses
-	search     *search.ClientWithResponses
-	public     *public.ClientWithResponses
-	listing    *listing.ClientWithResponses
-	restricted *restricted.ClientWithResponses
-	order      *order.ClientWithResponses
-	buyer      *buyer.ClientWithResponses
+	search     *SearchClient
+	public     *PublicClient
+	listing    *ListingClient
+	restricted *RestrictedClient
+	order      *OrderClient
+	buyer      *BuyerClient
 }
 
 // NewClient creates a Tradera REST API v4 client.
 func NewClient(config Config) (*Client, error) {
-	if err := config.Validate(); err != nil {
+	config, httpClient, err := prepareClient(config)
+	if err != nil {
 		return nil, err
 	}
-	if config.BaseURL == "" {
-		config.BaseURL = DefaultBaseURL
-	}
-
-	httpClient := configuredHTTPClient(config)
 
 	rawClient, err := rest.NewClientWithResponses(config.BaseURL, rest.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("create aggregate client: %w", err)
 	}
-	searchClient, err := search.NewClientWithResponses(config.BaseURL, search.WithHTTPClient(httpClient))
+	searchClient, err := newSearchClient(config.BaseURL, httpClient)
 	if err != nil {
-		return nil, fmt.Errorf("create search client: %w", err)
+		return nil, err
 	}
-	publicClient, err := public.NewClientWithResponses(config.BaseURL, public.WithHTTPClient(httpClient))
+	publicClient, err := newPublicClient(config.BaseURL, httpClient)
 	if err != nil {
-		return nil, fmt.Errorf("create public client: %w", err)
+		return nil, err
 	}
-	listingClient, err := listing.NewClientWithResponses(config.BaseURL, listing.WithHTTPClient(httpClient))
+	listingClient, err := newListingClient(config.BaseURL, httpClient)
 	if err != nil {
-		return nil, fmt.Errorf("create listing client: %w", err)
+		return nil, err
 	}
-	restrictedClient, err := restricted.NewClientWithResponses(config.BaseURL, restricted.WithHTTPClient(httpClient))
+	restrictedClient, err := newRestrictedClient(config.BaseURL, httpClient)
 	if err != nil {
-		return nil, fmt.Errorf("create restricted client: %w", err)
+		return nil, err
 	}
-	orderClient, err := order.NewClientWithResponses(config.BaseURL, order.WithHTTPClient(httpClient))
+	orderClient, err := newOrderClient(config.BaseURL, httpClient)
 	if err != nil {
-		return nil, fmt.Errorf("create order client: %w", err)
+		return nil, err
 	}
-	buyerClient, err := buyer.NewClientWithResponses(config.BaseURL, buyer.WithHTTPClient(httpClient))
+	buyerClient, err := newBuyerClient(config.BaseURL, httpClient)
 	if err != nil {
-		return nil, fmt.Errorf("create buyer client: %w", err)
+		return nil, err
 	}
 
 	return &Client{
-		config:     config,
-		raw:        rawClient,
-		search:     searchClient,
-		public:     publicClient,
-		listing:    listingClient,
-		restricted: restrictedClient,
-		order:      orderClient,
-		buyer:      buyerClient,
+		ClientWithResponses: rawClient,
+		config:              config,
+		search:              searchClient,
+		public:              publicClient,
+		listing:             listingClient,
+		restricted:          restrictedClient,
+		order:               orderClient,
+		buyer:               buyerClient,
 	}, nil
 }
 
 // Raw returns the aggregate generated client containing every REST v4 operation.
-func (client *Client) Raw() *rest.ClientWithResponses { return client.raw }
+func (client *Client) Raw() *rest.ClientWithResponses { return client.ClientWithResponses }
 
-// Search returns the generated Search service client.
-func (client *Client) Search() *search.ClientWithResponses { return client.search }
+// Search returns the Search service client.
+func (client *Client) Search() *SearchClient { return client.search }
 
-// Public returns the generated Public service client.
-func (client *Client) Public() *public.ClientWithResponses { return client.public }
+// Public returns the Public service client.
+func (client *Client) Public() *PublicClient { return client.public }
 
-// Listing returns the generated Listing service client.
-func (client *Client) Listing() *listing.ClientWithResponses { return client.listing }
+// Listing returns the Listing service client.
+func (client *Client) Listing() *ListingClient { return client.listing }
 
-// Restricted returns the generated Restricted service client.
-func (client *Client) Restricted() *restricted.ClientWithResponses { return client.restricted }
+// Restricted returns the Restricted service client.
+func (client *Client) Restricted() *RestrictedClient { return client.restricted }
 
-// Order returns the generated Order service client.
-func (client *Client) Order() *order.ClientWithResponses { return client.order }
+// Order returns the Order service client.
+func (client *Client) Order() *OrderClient { return client.order }
 
-// Buyer returns the generated Buyer service client.
-func (client *Client) Buyer() *buyer.ClientWithResponses { return client.buyer }
+// Buyer returns the Buyer service client.
+func (client *Client) Buyer() *BuyerClient { return client.buyer }
 
 // Config returns the effective client configuration.
 func (client *Client) Config() Config { return client.config }
+
+func prepareClient(config Config) (Config, *http.Client, error) {
+	if err := config.Validate(); err != nil {
+		return Config{}, nil, err
+	}
+	if config.BaseURL == "" {
+		config.BaseURL = DefaultBaseURL
+	}
+	return config, configuredHTTPClient(config), nil
+}
 
 func configuredHTTPClient(config Config) *http.Client {
 	httpClient := &http.Client{}

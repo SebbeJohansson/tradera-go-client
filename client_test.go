@@ -18,7 +18,7 @@ func (roundTrip roundTripFunc) RoundTrip(request *http.Request) (*http.Response,
 	return roundTrip(request)
 }
 
-func TestGeneratedClientAddsAuthenticationAndMapsPath(t *testing.T) {
+func TestPublicClientAddsAuthenticationAndMapsPath(t *testing.T) {
 	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
 		if request.URL.Path != "/v4/items/42" {
 			t.Fatalf("unexpected path: %s", request.URL.Path)
@@ -40,12 +40,12 @@ func TestGeneratedClientAddsAuthenticationAndMapsPath(t *testing.T) {
 	config := tradera.DefaultConfig(123, "app-key").WithUserAuth(456, "user-token")
 	config = config.WithBaseURL("https://example.test").WithHTTPClient(&http.Client{Transport: transport})
 	config = config.WithHeaders(http.Header{"X-Custom": []string{"custom-value"}})
-	client, err := tradera.NewClient(config)
+	client, err := tradera.NewPublicClient(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	response, err := client.Public().GetItemWithResponse(context.Background(), 42)
+	response, err := client.GetItemWithResponse(context.Background(), 42)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestGeneratedClientReturnsStructuredAPIError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Public().GetItemWithResponse(context.Background(), 42)
+	_, err = client.GetItemWithResponse(context.Background(), 42)
 	var apiError *tradera.APIError
 	if !errors.As(err, &apiError) {
 		t.Fatalf("expected APIError, got %T: %v", err, err)
@@ -84,6 +84,9 @@ func TestGeneratedClientReturnsStructuredAPIError(t *testing.T) {
 	}
 	if string(apiError.Body) != `{"message":"invalid item"}` {
 		t.Fatalf("unexpected API error body: %s", apiError.Body)
+	}
+	if client.Public() == nil {
+		t.Fatal("expected aggregate client to expose the Public service")
 	}
 }
 

@@ -21,6 +21,10 @@ A generated Go client for Tradera's REST API v4. The package provides aggregate 
 
 Tradera's SOAP API remains at v3 and is intended for existing integrations. The previous Go SOAP client source is preserved on the [`archive/v3`](https://github.com/SebbeJohansson/tradera-go-client/tree/archive/v3) branch. New integrations should use this REST v4 client.
 
+## Project Background
+
+This project was originally fully AI-generated based on [pristabell/tradera-api-client](https://github.com/SebbeJohansson/tradera-api-client). It has now deviated from the original TypeScript client, but is still meant to be the variant for GO.
+
 ## Installation
 
 ```bash
@@ -60,10 +64,12 @@ func main() {
 }
 ```
 
+`Client` is the aggregate client. Its generated methods are promoted directly, and the same operations are also grouped into service clients:
+
 ### Public API
 
 ```go
-response, err := client.Public().GetItemWithResponse(ctx, 123456789)
+response, err := client.GetItemWithResponse(ctx, 123456789)
 if err != nil {
 	log.Fatal(err)
 }
@@ -71,15 +77,30 @@ if err != nil {
 item := response.JSON200
 ```
 
+### Service-Scoped Clients
+
+Service clients can be obtained from the aggregate client or constructed independently, matching the service classes in the TypeScript client:
+
+```go
+publicClient, err := tradera.NewPublicClient(
+	tradera.DefaultConfig(1234, "your-app-key"),
+)
+if err != nil {
+	log.Fatal(err)
+}
+
+response, err := publicClient.GetItemWithResponse(ctx, 123456789)
+```
+
 ### User Authentication
 
-Restricted, Order, and Buyer operations generally require user credentials:
+Restricted, Order, and Buyer operations generally require user credentials. The same config can create either an aggregate or a service-scoped client:
 
 ```go
 config := tradera.DefaultConfig(1234, "your-app-key").
 	WithUserAuth(5678, "your-user-token")
 
-client, err := tradera.NewClient(config)
+client, err := tradera.NewRestrictedClient(config)
 ```
 
 The client sends these REST headers:
@@ -91,15 +112,15 @@ The client sends these REST headers:
 
 ## Available Clients
 
-| Method | Generated package | Purpose |
-| --- | --- | --- |
-| `client.Raw()` | `generated/rest` | All REST v4 operations |
-| `client.Search()` | `generated/rest/search` | Item search operations |
-| `client.Public()` | `generated/rest/public` | Public items, users, categories, and reference data |
-| `client.Listing()` | `generated/rest/listing` | Listing restart information |
-| `client.Restricted()` | `generated/rest/restricted` | Authenticated seller and listing operations |
-| `client.Order()` | `generated/rest/order` | Seller order operations |
-| `client.Buyer()` | `generated/rest/buyer` | Buyer operations |
+| Aggregate method | Standalone constructor | Generated package | Purpose |
+| --- | --- | --- | --- |
+| `client.Raw()` | `NewClient` | `generated/rest` | All REST v4 operations |
+| `client.Search()` | `NewSearchClient` | `generated/rest/search` | Item search operations |
+| `client.Public()` | `NewPublicClient` | `generated/rest/public` | Public items, users, categories, and reference data |
+| `client.Listing()` | `NewListingClient` | `generated/rest/listing` | Listing restart information |
+| `client.Restricted()` | `NewRestrictedClient` | `generated/rest/restricted` | Authenticated seller and listing operations |
+| `client.Order()` | `NewOrderClient` | `generated/rest/order` | Seller order operations |
+| `client.Buyer()` | `NewBuyerClient` | `generated/rest/buyer` | Buyer operations |
 
 Methods ending in `WithResponse` return generated wrappers containing the raw HTTP response, response body, status helpers, and decoded fields such as `JSON200`.
 
