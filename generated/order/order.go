@@ -276,7 +276,7 @@ type GetOrdersRequest struct {
 }
 
 type ArrayOfInt struct {
-	int []int32 `xml:"int,omitempty" json:"int,omitempty"`
+	Int []int32 `xml:"int,omitempty" json:"int,omitempty"`
 }
 
 type OrdersResult struct {
