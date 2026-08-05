@@ -252,7 +252,7 @@ type SearchAdvancedRequest struct {
 }
 
 type ArrayOfInt struct {
-	int []int32 `xml:"int,omitempty" json:"int,omitempty"`
+	Int []int32 `xml:"int,omitempty" json:"int,omitempty"`
 }
 
 type AttributeFilter struct {
