@@ -28,7 +28,7 @@ This project was originally fully AI-generated based on [pristabell/tradera-api-
 ## Installation
 
 ```bash
-go get github.com/SebbeJohansson/tradera-go-client
+go get github.com/SebbeJohansson/tradera-go-client/v4
 ```
 
 ## Basic Usage
@@ -41,8 +41,8 @@ import (
 	"fmt"
 	"log"
 
-	tradera "github.com/SebbeJohansson/tradera-go-client"
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/search"
+	tradera "github.com/SebbeJohansson/tradera-go-client/v4"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest/search"
 )
 
 func main() {

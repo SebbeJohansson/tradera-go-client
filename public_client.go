@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/public"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest/public"
 )
 
 // PublicClient provides public item, user, category, and reference data operations.

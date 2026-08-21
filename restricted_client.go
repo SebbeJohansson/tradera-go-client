@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/restricted"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest/restricted"
 )
 
 // RestrictedClient provides authenticated seller and listing operations.

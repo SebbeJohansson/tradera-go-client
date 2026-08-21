@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/listing"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest/listing"
 )
 
 // ListingClient provides listing restart operations.

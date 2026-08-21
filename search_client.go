@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/search"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest/search"
 )
 
 // SearchClient provides item search operations.

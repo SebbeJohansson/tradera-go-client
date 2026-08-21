@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/order"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest/order"
 )
 
 // OrderClient provides seller order operations.

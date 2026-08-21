@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 
-	tradera "github.com/SebbeJohansson/tradera-go-client"
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/restricted"
+	tradera "github.com/SebbeJohansson/tradera-go-client/v4"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest/restricted"
 )
 
 func main() {

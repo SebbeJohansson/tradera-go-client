@@ -8,7 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	tradera "github.com/SebbeJohansson/tradera-go-client"
+	tradera "github.com/SebbeJohansson/tradera-go-client/v4"
 )
 
 func main() {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/buyer"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest/buyer"
 )
 
 // BuyerClient provides buyer operations.

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	tradera "github.com/SebbeJohansson/tradera-go-client"
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest/search"
+	tradera "github.com/SebbeJohansson/tradera-go-client/v4"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest/search"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

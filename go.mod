@@ -1,11 +1,8 @@
-module github.com/SebbeJohansson/tradera-go-client
+module github.com/SebbeJohansson/tradera-go-client/v4
 
 go 1.25.6
 
 require github.com/oapi-codegen/runtime v1.1.2
-
-// v0.1.0 has stale imports from before the module rename and does not build.
-retract v0.1.0
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect

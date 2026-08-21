@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/SebbeJohansson/tradera-go-client/generated/rest"
-	"github.com/SebbeJohansson/tradera-go-client/middleware"
+	"github.com/SebbeJohansson/tradera-go-client/v4/generated/rest"
+	"github.com/SebbeJohansson/tradera-go-client/v4/middleware"
 )
 
 // Client provides aggregate and service-scoped generated REST clients.
