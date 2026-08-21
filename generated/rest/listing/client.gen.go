@@ -30,6 +30,24 @@ type ItemRestarts struct {
 	RestartedItems      *[]RestartedItem `json:"restartedItems"`
 }
 
+// RestartItemResult Outcome of a restart request for an ended item.
+type RestartItemResult struct {
+	// IsSuccessful Whether the restart was accepted. A restart runs asynchronously, so a successful
+	// response means the restart was queued, not that the new item is listed yet.
+	IsSuccessful *bool `json:"isSuccessful,omitempty"`
+
+	// NewItemId The id reserved for the restarted item. Null when the restart was rejected.
+	// The item becomes available under this id once the restart completes.
+	NewItemId *int32 `json:"newItemId"`
+
+	// OldItemId The item that was restarted.
+	OldItemId *int32 `json:"oldItemId,omitempty"`
+
+	// ValidationError Why the restart was rejected, for example "Item is not ended" or
+	// "Item has already been restarted". Null when the restart was accepted.
+	ValidationError *string `json:"validationError"`
+}
+
 // RestartedItem defines model for RestartedItem.
 type RestartedItem struct {
 	RestartedAsItemId *int32     `json:"restartedAsItemId,omitempty"`
@@ -112,10 +130,25 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 type ClientInterface interface {
 	// GetItemRestarts request
 	GetItemRestarts(ctx context.Context, itemId int32, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RestartItem request
+	RestartItem(ctx context.Context, itemId int32, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GetItemRestarts(ctx context.Context, itemId int32, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetItemRestartsRequest(c.Server, itemId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RestartItem(ctx context.Context, itemId int32, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRestartItemRequest(c.Server, itemId)
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +186,40 @@ func NewGetItemRestartsRequest(server string, itemId int32) (*http.Request, erro
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRestartItemRequest generates requests for RestartItem
+func NewRestartItemRequest(server string, itemId int32) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "itemId", runtime.ParamLocationPath, itemId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v4/listings/items/%s/restart", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -205,6 +272,9 @@ func WithBaseURL(baseURL string) ClientOption {
 type ClientWithResponsesInterface interface {
 	// GetItemRestartsWithResponse request
 	GetItemRestartsWithResponse(ctx context.Context, itemId int32, reqEditors ...RequestEditorFn) (*GetItemRestartsHTTPResponse, error)
+
+	// RestartItemWithResponse request
+	RestartItemWithResponse(ctx context.Context, itemId int32, reqEditors ...RequestEditorFn) (*RestartItemHTTPResponse, error)
 }
 
 type GetItemRestartsHTTPResponse struct {
@@ -229,6 +299,28 @@ func (r GetItemRestartsHTTPResponse) StatusCode() int {
 	return 0
 }
 
+type RestartItemHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *RestartItemResult
+}
+
+// Status returns HTTPResponse.Status
+func (r RestartItemHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RestartItemHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // GetItemRestartsWithResponse request returning *GetItemRestartsHTTPResponse
 func (c *ClientWithResponses) GetItemRestartsWithResponse(ctx context.Context, itemId int32, reqEditors ...RequestEditorFn) (*GetItemRestartsHTTPResponse, error) {
 	rsp, err := c.GetItemRestarts(ctx, itemId, reqEditors...)
@@ -236,6 +328,15 @@ func (c *ClientWithResponses) GetItemRestartsWithResponse(ctx context.Context, i
 		return nil, err
 	}
 	return ParseGetItemRestartsHTTPResponse(rsp)
+}
+
+// RestartItemWithResponse request returning *RestartItemHTTPResponse
+func (c *ClientWithResponses) RestartItemWithResponse(ctx context.Context, itemId int32, reqEditors ...RequestEditorFn) (*RestartItemHTTPResponse, error) {
+	rsp, err := c.RestartItem(ctx, itemId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRestartItemHTTPResponse(rsp)
 }
 
 // ParseGetItemRestartsHTTPResponse parses an HTTP response from a GetItemRestartsWithResponse call
@@ -254,6 +355,35 @@ func ParseGetItemRestartsHTTPResponse(rsp *http.Response) (*GetItemRestartsHTTPR
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ItemRestarts
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 200:
+		// Content-type (text/plain) unsupported
+
+	}
+
+	return response, nil
+}
+
+// ParseRestartItemHTTPResponse parses an HTTP response from a RestartItemWithResponse call
+func ParseRestartItemHTTPResponse(rsp *http.Response) (*RestartItemHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RestartItemHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RestartItemResult
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

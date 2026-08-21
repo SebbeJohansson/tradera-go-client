@@ -247,7 +247,10 @@ type User = map[string]interface{}
 
 // GetBuyerTransactionsParams defines parameters for GetBuyerTransactions.
 type GetBuyerTransactionsParams struct {
+	// MinTransactionDate Only return transactions created on or after this date. Defaults to 60 days back when omitted.
 	MinTransactionDate *time.Time `form:"minTransactionDate,omitempty" json:"minTransactionDate,omitempty"`
+
+	// MaxTransactionDate Only return transactions created on or before this date. Unbounded when omitted.
 	MaxTransactionDate *time.Time `form:"maxTransactionDate,omitempty" json:"maxTransactionDate,omitempty"`
 }
 

@@ -127,6 +127,30 @@ type SetSellerOrderAsShippedResponse struct {
 	OrderId *int32 `json:"orderId,omitempty"`
 }
 
+// ShippingCode How to hand a booked shipment over to the carrier, for shipping options that have no printable
+// freight label (for example Instabox) or that are handed over by scanning a QR code.
+type ShippingCode struct {
+	// HasFreightLabel Whether a printable freight label is available for the shipment through the freight-labels
+	// endpoint.
+	HasFreightLabel *bool `json:"hasFreightLabel,omitempty"`
+
+	// LabellessShippingCode The code to write on the parcel for a labelless shipment. Empty until the carrier has
+	// confirmed the booking, and for shipping options that use a printed freight label instead.
+	LabellessShippingCode *string `json:"labellessShippingCode"`
+
+	// OrderId The order the shipment belongs to.
+	OrderId *int32 `json:"orderId,omitempty"`
+
+	// QrCodeImageUrl URL to a QR code to show at drop-off. Empty for shipping options that do not use one.
+	QrCodeImageUrl *string `json:"qrCodeImageUrl"`
+
+	// ShipmentNo The carrier's shipment number.
+	ShipmentNo *string `json:"shipmentNo"`
+
+	// ShippingProvider The shipping provider that carries the shipment, for example Instabox or SchenkerPrivpak.
+	ShippingProvider *string `json:"shippingProvider"`
+}
+
 // GetSellerOrdersParams defines parameters for GetSellerOrders.
 type GetSellerOrdersParams struct {
 	FromDate      *time.Time                `form:"fromDate,omitempty" json:"fromDate,omitempty"`
@@ -216,6 +240,9 @@ type ClientInterface interface {
 	// GetFreightLabels request
 	GetFreightLabels(ctx context.Context, orderIds string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetShippingCodes request
+	GetShippingCodes(ctx context.Context, orderIds string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SetSellerOrderAsShipped request
 	SetSellerOrderAsShipped(ctx context.Context, orderId int32, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
@@ -246,6 +273,18 @@ func (c *Client) GetOrders(ctx context.Context, orderIds string, reqEditors ...R
 
 func (c *Client) GetFreightLabels(ctx context.Context, orderIds string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetFreightLabelsRequest(c.Server, orderIds)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetShippingCodes(ctx context.Context, orderIds string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetShippingCodesRequest(c.Server, orderIds)
 	if err != nil {
 		return nil, err
 	}
@@ -417,6 +456,40 @@ func NewGetFreightLabelsRequest(server string, orderIds string) (*http.Request, 
 	return req, nil
 }
 
+// NewGetShippingCodesRequest generates requests for GetShippingCodes
+func NewGetShippingCodesRequest(server string, orderIds string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "orderIds", runtime.ParamLocationPath, orderIds)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v4/orders/%s/shipping-codes", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewSetSellerOrderAsShippedRequest generates requests for SetSellerOrderAsShipped
 func NewSetSellerOrderAsShippedRequest(server string, orderId int32) (*http.Request, error) {
 	var err error
@@ -503,6 +576,9 @@ type ClientWithResponsesInterface interface {
 	// GetFreightLabelsWithResponse request
 	GetFreightLabelsWithResponse(ctx context.Context, orderIds string, reqEditors ...RequestEditorFn) (*GetFreightLabelsHTTPResponse, error)
 
+	// GetShippingCodesWithResponse request
+	GetShippingCodesWithResponse(ctx context.Context, orderIds string, reqEditors ...RequestEditorFn) (*GetShippingCodesHTTPResponse, error)
+
 	// SetSellerOrderAsShippedWithResponse request
 	SetSellerOrderAsShippedWithResponse(ctx context.Context, orderId int32, reqEditors ...RequestEditorFn) (*SetSellerOrderAsShippedHTTPResponse, error)
 }
@@ -573,6 +649,28 @@ func (r GetFreightLabelsHTTPResponse) StatusCode() int {
 	return 0
 }
 
+type GetShippingCodesHTTPResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ShippingCode
+}
+
+// Status returns HTTPResponse.Status
+func (r GetShippingCodesHTTPResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetShippingCodesHTTPResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type SetSellerOrderAsShippedHTTPResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -620,6 +718,15 @@ func (c *ClientWithResponses) GetFreightLabelsWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseGetFreightLabelsHTTPResponse(rsp)
+}
+
+// GetShippingCodesWithResponse request returning *GetShippingCodesHTTPResponse
+func (c *ClientWithResponses) GetShippingCodesWithResponse(ctx context.Context, orderIds string, reqEditors ...RequestEditorFn) (*GetShippingCodesHTTPResponse, error) {
+	rsp, err := c.GetShippingCodes(ctx, orderIds, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetShippingCodesHTTPResponse(rsp)
 }
 
 // SetSellerOrderAsShippedWithResponse request returning *SetSellerOrderAsShippedHTTPResponse
@@ -705,6 +812,35 @@ func ParseGetFreightLabelsHTTPResponse(rsp *http.Response) (*GetFreightLabelsHTT
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest []FreightLabel
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case rsp.StatusCode == 200:
+		// Content-type (text/plain) unsupported
+
+	}
+
+	return response, nil
+}
+
+// ParseGetShippingCodesHTTPResponse parses an HTTP response from a GetShippingCodesWithResponse call
+func ParseGetShippingCodesHTTPResponse(rsp *http.Response) (*GetShippingCodesHTTPResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetShippingCodesHTTPResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ShippingCode
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
