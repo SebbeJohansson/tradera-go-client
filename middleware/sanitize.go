@@ -2,8 +2,10 @@ package middleware
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -34,6 +36,7 @@ func NewSanitizingTransport(base http.RoundTripper) *SanitizingTransport {
 // RoundTrip implements http.RoundTripper.
 func (t *SanitizingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := t.Base.RoundTrip(req)
+	fmt.Fprintf(os.Stderr, "[SANITIZE_DEBUG] RoundTrip called, err=%v resp_nil=%v\n", err, resp == nil)
 	if err != nil || resp == nil || resp.Body == nil {
 		return resp, err
 	}
@@ -43,6 +46,13 @@ func (t *SanitizingTransport) RoundTrip(req *http.Request) (*http.Response, erro
 	if readErr != nil {
 		return nil, readErr
 	}
+	illegalCount := 0
+	for _, b := range body {
+		if isIllegalXMLByte(b) {
+			illegalCount++
+		}
+	}
+	fmt.Fprintf(os.Stderr, "[SANITIZE_DEBUG] body len=%d illegal_bytes=%d content_encoding=%q\n", len(body), illegalCount, resp.Header.Get("Content-Encoding"))
 	if closeErr != nil {
 		return nil, closeErr
 	}
