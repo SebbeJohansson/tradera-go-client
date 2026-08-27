@@ -83,6 +83,10 @@ func NewClient(config Config) (*Client, error) {
 		config: config,
 		httpClient: &http.Client{
 			Timeout: config.Timeout,
+			// Tradera's SOAP responses occasionally contain raw XML-illegal control
+			// characters (garbage bytes in seller-entered item text), which would otherwise
+			// fail the entire response's XML decode. See middleware.SanitizingTransport.
+			Transport: middleware.NewSanitizingTransport(nil),
 		},
 	}
 
