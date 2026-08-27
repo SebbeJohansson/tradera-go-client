@@ -15,12 +15,25 @@ func TestStripIllegalXMLChars(t *testing.T) {
 		in   []byte
 		want []byte
 	}{
-		{"no illegal chars", []byte("<a>hello</a>"), []byte("<a>hello</a>")},
-		{"strips SUB (U+001A)", []byte("<a>hel\x1Alo</a>"), []byte("<a>hello</a>")},
-		{"strips multiple control chars", []byte("<a>a\x02b\x08c</a>"), []byte("<a>abc</a>")},
-		{"keeps tab, LF, CR", []byte("<a>a\tb\nc\rd</a>"), []byte("<a>a\tb\nc\rd</a>")},
+		{"no illegal content", []byte("<a>hello</a>"), []byte("<a>hello</a>")},
+		{"strips raw SUB byte (U+001A)", []byte("<a>hel\x1Alo</a>"), []byte("<a>hello</a>")},
+		{"strips multiple raw control bytes", []byte("<a>a\x02b\x08c</a>"), []byte("<a>abc</a>")},
+		{"keeps raw tab, LF, CR", []byte("<a>a\tb\nc\rd</a>"), []byte("<a>a\tb\nc\rd</a>")},
 		{"keeps multi-byte UTF-8", []byte("<a>Bröllopsslöjor</a>"), []byte("<a>Bröllopsslöjor</a>")},
 		{"empty body", []byte{}, []byte{}},
+
+		// The actual bug: a well-formed-ASCII numeric character reference that decodes to an
+		// illegal codepoint. Raw byte scanning alone never catches this - the wire bytes are
+		// just '&', '#', digits, ';'.
+		{"strips decimal numeric ref to illegal codepoint (&#2;)", []byte("<a>hel&#2;lo</a>"), []byte("<a>hello</a>")},
+		{"strips hex numeric ref to illegal codepoint (&#x1A;)", []byte("<a>hel&#x1A;lo</a>"), []byte("<a>hello</a>")},
+		{"strips hex numeric ref, lowercase x and digits (&#x8;)", []byte("<a>a&#x8;b</a>"), []byte("<a>ab</a>")},
+		{"keeps a legal numeric ref (&#65; = 'A')", []byte("<a>&#65;</a>"), []byte("<a>&#65;</a>")},
+		{"keeps a legal hex numeric ref (&#x41; = 'A')", []byte("<a>&#x41;</a>"), []byte("<a>&#x41;</a>")},
+		{"keeps numeric ref to tab/LF/CR", []byte("<a>&#9;&#10;&#13;</a>"), []byte("<a>&#9;&#10;&#13;</a>")},
+		{"strips numeric ref to surrogate codepoint", []byte("<a>a&#xD800;b</a>"), []byte("<a>ab</a>")},
+		{"ignores malformed numeric ref instead of erroring", []byte("<a>&#;</a>"), []byte("<a>&#;</a>")},
+		{"multiple illegal refs in one body", []byte("<a>&#2;x&#8;y&#26;</a>"), []byte("<a>xy</a>")},
 	}
 
 	for _, tc := range cases {
@@ -35,7 +48,7 @@ func TestStripIllegalXMLChars(t *testing.T) {
 
 func TestSanitizingTransport_RoundTrip(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("<a>hel\x1Alo</a>"))
+		w.Write([]byte("<a>hel&#x1A;lo</a>"))
 	}))
 	defer server.Close()
 
@@ -63,7 +76,7 @@ func TestSanitizingTransport_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestSanitizingTransport_NoIllegalChars(t *testing.T) {
+func TestSanitizingTransport_NoIllegalContent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("<a>clean</a>"))
 	}))
